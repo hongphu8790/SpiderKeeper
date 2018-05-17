@@ -98,12 +98,19 @@ class SpiderAgent():
     def sync_job_status(self, project):
         for spider_service_instance in self.spider_service_instances:
             job_status = spider_service_instance.get_job_list(project.project_name)
-            job_execution_list = JobExecution.list_uncomplete_job()
+            job_execution_list = JobExecution.list_uncomplete_job(project.id)
             job_execution_dict = dict(
                 [(job_execution.service_job_execution_id, job_execution) for job_execution in job_execution_list])
             # running
             for job_execution_info in job_status[SpiderStatus.RUNNING]:
                 job_execution = job_execution_dict.get(job_execution_info['id'])
+                # phunh: in case service found, but local wrong status (in canceled or finished)
+                if not job_execution:
+                    job_execution = JobExecution.find_job_by_service_id(job_execution_info['id'])
+                    if job_execution:
+                        job_execution.running_status = SpiderStatus.RUNNING
+                        job_execution.end_time = None
+                        job_execution.start_time = job_execution_info['start_time']
                 if job_execution and job_execution.running_status == SpiderStatus.PENDING:
                     job_execution.start_time = job_execution_info['start_time']
                     job_execution.running_status = SpiderStatus.RUNNING
@@ -111,6 +118,12 @@ class SpiderAgent():
             # finished
             for job_execution_info in job_status[SpiderStatus.FINISHED]:
                 job_execution = job_execution_dict.get(job_execution_info['id'])
+                if not job_execution:
+                    job_execution = JobExecution.find_job_by_service_id(job_execution_info['id'])
+                    if job_execution:
+                        job_execution.running_status = SpiderStatus.FINISHED
+                        job_execution.end_time = job_execution_info['end_time']
+                        job_execution.start_time = job_execution_info['start_time']
                 if job_execution and job_execution.running_status != SpiderStatus.FINISHED:
                     job_execution.start_time = job_execution_info['start_time']
                     job_execution.end_time = job_execution_info['end_time']

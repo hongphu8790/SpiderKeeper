@@ -183,8 +183,9 @@ class JobExecution(Base):
         return cls.query.filter(cls.service_job_execution_id.in_(service_job_execution_ids)).all()
 
     @classmethod
-    def list_uncomplete_job(cls):
-        return cls.query.filter(cls.running_status != SpiderStatus.FINISHED,
+    def list_uncomplete_job(cls, project_id):
+        return cls.query.filter(cls.project_id == project_id,
+                                cls.running_status != SpiderStatus.FINISHED,
                                 cls.running_status != SpiderStatus.CANCELED).all()
 
     @classmethod
